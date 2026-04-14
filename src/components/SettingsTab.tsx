@@ -7,9 +7,14 @@ interface LaunchConfig {
   activeLaunch: string;
   ticker: string;
   contractAddress: string;
+  mcap: string;
   mcapTarget: string;
   treasury: string;
   supplyControl: string;
+  buyers: string;
+  sellers: string;
+  ratio: string;
+  fees24h: string;
   poolAddress: string;
   rpcUrl: string;
   notes: string;
@@ -19,9 +24,14 @@ const DEFAULTS: LaunchConfig = {
   activeLaunch: '$ASPEN',
   ticker: 'ASPEN',
   contractAddress: '',
+  mcap: '$34.2M',
   mcapTarget: '$30M',
-  treasury: '',
+  treasury: '1,240,000',
   supplyControl: '98.4%',
+  buyers: '14200',
+  sellers: '284',
+  ratio: '50:1',
+  fees24h: '$11.4k',
   poolAddress: '',
   rpcUrl: 'http://127.0.0.1:8899',
   notes: '',
@@ -45,14 +55,21 @@ export default function SettingsTab() {
   useEffect(() => {
     const stored = load();
     setConfig(stored);
+    applyToStore(stored);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function applyToStore(c: LaunchConfig) {
     setStats({
       ...stats,
       activeLaunch: c.activeLaunch || stats.activeLaunch,
+      mcap: c.mcap || stats.mcap,
       treasury: c.treasury ? `$${Number(c.treasury.replace(/,/g, '')).toLocaleString()}` : stats.treasury,
       supplyControl: c.supplyControl || stats.supplyControl,
+      buyers: c.buyers ? Number(c.buyers) : stats.buyers,
+      sellers: c.sellers ? Number(c.sellers) : stats.sellers,
+      ratio: c.ratio || stats.ratio,
+      fees24h: c.fees24h || stats.fees24h,
     });
   }
 
@@ -73,9 +90,14 @@ export default function SettingsTab() {
     { key: 'activeLaunch', label: 'Token Name / Cashtag', placeholder: '$ASPEN' },
     { key: 'ticker', label: 'Ticker', placeholder: 'ASPEN' },
     { key: 'contractAddress', label: 'Token Contract Address', placeholder: 'Solana mint address', mono: true },
+    { key: 'mcap', label: 'Current Mcap', placeholder: '$34.2M' },
     { key: 'mcapTarget', label: 'Mcap Target', placeholder: '$30M' },
     { key: 'supplyControl', label: 'Supply Control %', placeholder: '98.4%' },
-    { key: 'treasury', label: 'Treasury Balance (USD)', placeholder: '1,240,000' },
+    { key: 'treasury', label: 'Treasury Balance (USD, numbers only)', placeholder: '1240000' },
+    { key: 'buyers', label: 'Buyers (24h)', placeholder: '14200' },
+    { key: 'sellers', label: 'Sellers (24h)', placeholder: '284' },
+    { key: 'ratio', label: 'Buy/Sell Ratio', placeholder: '50:1' },
+    { key: 'fees24h', label: 'Fees Claimed 24h', placeholder: '$11.4k' },
     { key: 'poolAddress', label: 'Meteora DLMM Pool Address', placeholder: 'Pool address', mono: true },
     { key: 'rpcUrl', label: 'Solana RPC URL', placeholder: 'http://127.0.0.1:8899', mono: true },
     { key: 'notes', label: 'Notes', placeholder: 'Any internal notes...', area: true },

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MMTab from './components/MMTab';
 import KOLTab from './components/KOLTab';
 import SettingsTab from './components/SettingsTab';
+import { useMMStore } from './store';
 
 type Tab = 'mm' | 'kol' | 'settings';
 
@@ -11,8 +12,32 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'settings', label: 'settings' },
 ];
 
+const STORAGE_KEY = 'mm_launch_config';
+
 export default function App() {
   const [tab, setTab] = useState<Tab>('mm');
+  const setStats = useMMStore((s) => s.setStats);
+  const stats = useMMStore((s) => s.stats);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const c = JSON.parse(raw);
+      setStats({
+        ...stats,
+        activeLaunch: c.activeLaunch || stats.activeLaunch,
+        mcap: c.mcap || stats.mcap,
+        treasury: c.treasury ? `$${Number(String(c.treasury).replace(/,/g, '')).toLocaleString()}` : stats.treasury,
+        supplyControl: c.supplyControl || stats.supplyControl,
+        buyers: c.buyers ? Number(c.buyers) : stats.buyers,
+        sellers: c.sellers ? Number(c.sellers) : stats.sellers,
+        ratio: c.ratio || stats.ratio,
+        fees24h: c.fees24h || stats.fees24h,
+      });
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0d0e0f] text-[#e5e7eb]">
