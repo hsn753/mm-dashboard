@@ -1,15 +1,15 @@
 import type { Transaction, MMStats, MirrorRule, HolderRow, KOL, Campaign, ScriptQueueItem, AuditLog, PaymentRecord } from './types';
 
 export const mockMMStats: MMStats = {
-  activeLaunch: '$ASPEN',
-  mcap: '$34.2M',
-  mcapChange: 12.4,
+  activeLaunch: '$JLP',
+  mcap: '...',
+  mcapChange: 0,
   treasury: '$1.24M',
   supplyControl: '98.4%',
-  buyers: 14200,
-  sellers: 284,
-  ratio: '50:1',
-  fees24h: '$11.4k',
+  buyers: 0,
+  sellers: 0,
+  ratio: '...',
+  fees24h: '...',
   botStatus: 'running',
 };
 
