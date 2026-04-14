@@ -1,172 +1,238 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMMStore } from '../store';
 
 const STORAGE_KEY = 'mm_launch_config';
 
-interface LaunchConfig {
-  activeLaunch: string;
+interface TokenData {
+  mint: string;
+  name: string;
   ticker: string;
-  contractAddress: string;
   mcap: string;
-  mcapTarget: string;
-  treasury: string;
-  supplyControl: string;
-  buyers: string;
-  sellers: string;
-  ratio: string;
-  fees24h: string;
-  poolAddress: string;
-  rpcUrl: string;
-  notes: string;
+  price: string;
+  change24h: string;
 }
 
-const DEFAULTS: LaunchConfig = {
-  activeLaunch: '$ASPEN',
-  ticker: 'ASPEN',
-  contractAddress: '',
-  mcap: '$34.2M',
-  mcapTarget: '$30M',
-  treasury: '1,240,000',
-  supplyControl: '98.4%',
-  buyers: '14200',
-  sellers: '284',
-  ratio: '50:1',
-  fees24h: '$11.4k',
-  poolAddress: '',
-  rpcUrl: 'http://127.0.0.1:8899',
-  notes: '',
-};
+function extractMint(input: string): string {
+  const trimmed = input.trim();
+  const jupMatch = trimmed.match(/jup\.ag\/tokens\/([A-Za-z0-9]+)/);
+  if (jupMatch) return jupMatch[1];
+  if (/^[A-Za-z0-9]{32,44}$/.test(trimmed)) return trimmed;
+  return trimmed;
+}
 
-function load(): LaunchConfig {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? { ...DEFAULTS, ...JSON.parse(raw) } : DEFAULTS;
-  } catch {
-    return DEFAULTS;
-  }
+function formatMcap(usd: number): string {
+  if (usd >= 1_000_000_000) return `$${(usd / 1_000_000_000).toFixed(1)}B`;
+  if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(1)}M`;
+  if (usd >= 1_000) return `$${(usd / 1_000).toFixed(1)}K`;
+  return `$${usd.toFixed(0)}`;
 }
 
 export default function SettingsTab() {
   const setStats = useMMStore((s) => s.setStats);
   const stats = useMMStore((s) => s.stats);
-  const [config, setConfig] = useState<LaunchConfig>(load);
-  const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    const stored = load();
-    setConfig(stored);
-    applyToStore(stored);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const savedRaw = localStorage.getItem(STORAGE_KEY);
+  const saved = savedRaw ? JSON.parse(savedRaw) : null;
 
-  function applyToStore(c: LaunchConfig) {
-    setStats({
-      ...stats,
-      activeLaunch: c.activeLaunch || stats.activeLaunch,
-      mcap: c.mcap || stats.mcap,
-      treasury: c.treasury ? `$${Number(c.treasury.replace(/,/g, '')).toLocaleString()}` : stats.treasury,
-      supplyControl: c.supplyControl || stats.supplyControl,
-      buyers: c.buyers ? Number(c.buyers) : stats.buyers,
-      sellers: c.sellers ? Number(c.sellers) : stats.sellers,
-      ratio: c.ratio || stats.ratio,
-      fees24h: c.fees24h || stats.fees24h,
-    });
+  const [input, setInput] = useState(saved?.mint ?? '');
+  const [mcapTarget, setMcapTarget] = useState(saved?.mcapTarget ?? '$30M');
+  const [supplyControl, setSupplyControl] = useState(saved?.supplyControl ?? '98.4%');
+  const [notes, setNotes] = useState(saved?.notes ?? '');
+  const [token, setToken] = useState<TokenData | null>(saved?.token ?? null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [applied, setApplied] = useState(false);
+
+  async function handleLookup() {
+    const mint = extractMint(input);
+    if (!mint) return;
+    setLoading(true);
+    setError(null);
+    setToken(null);
+    try {
+      const res = await fetch(`https://price.jup.ag/v6/price?ids=${mint}`);
+      const priceData = await res.json() as { data: Record<string, { price: number; id: string }> };
+      const entry = priceData?.data?.[mint];
+
+      const metaRes = await fetch(`https://tokens.jup.ag/token/${mint}`);
+      const meta = await metaRes.json() as { symbol?: string; name?: string; extensions?: { coingeckoId?: string }; daily_volume?: number };
+
+      const ticker = meta?.symbol ?? 'UNKNOWN';
+      const name = meta?.name ?? ticker;
+      const price = entry?.price ?? 0;
+
+      let mcapStr = '—';
+      if (meta?.extensions?.coingeckoId) {
+        try {
+          const cgRes = await fetch(`https://api.coingecko.com/api/v3/coins/${meta.extensions.coingeckoId}?localization=false&tickers=false&community_data=false&developer_data=false`);
+          const cgData = await cgRes.json() as { market_data?: { market_cap?: { usd?: number }; price_change_percentage_24h?: number } };
+          const mcapUsd = cgData?.market_data?.market_cap?.usd;
+          if (mcapUsd) mcapStr = formatMcap(mcapUsd);
+        } catch { /* no mcap */ }
+      }
+
+      const tokenData: TokenData = {
+        mint,
+        name,
+        ticker,
+        mcap: mcapStr,
+        price: price > 0 ? `$${price.toPrecision(4)}` : '—',
+        change24h: '—',
+      };
+      setToken(tokenData);
+    } catch {
+      setError('Could not fetch token data. Check the address or URL.');
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function handleSave() {
+  function handleApply() {
+    if (!token) return;
+    const config = { mint: token.mint, token, mcapTarget, supplyControl, notes };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-    applyToStore(config);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setStats({
+      ...stats,
+      activeLaunch: `$${token.ticker}`,
+      mcap: token.mcap !== '—' ? token.mcap : stats.mcap,
+      supplyControl: supplyControl || stats.supplyControl,
+    });
+    setApplied(true);
+    setTimeout(() => setApplied(false), 2500);
   }
 
   function handleReset() {
-    setConfig(DEFAULTS);
     localStorage.removeItem(STORAGE_KEY);
-    applyToStore(DEFAULTS);
+    setInput('');
+    setToken(null);
+    setMcapTarget('$30M');
+    setSupplyControl('98.4%');
+    setNotes('');
+    setError(null);
   }
 
-  const fields: { key: keyof LaunchConfig; label: string; placeholder: string; mono?: boolean; area?: boolean }[] = [
-    { key: 'activeLaunch', label: 'Token Name / Cashtag', placeholder: '$ASPEN' },
-    { key: 'ticker', label: 'Ticker', placeholder: 'ASPEN' },
-    { key: 'contractAddress', label: 'Token Contract Address', placeholder: 'Solana mint address', mono: true },
-    { key: 'mcap', label: 'Current Mcap', placeholder: '$34.2M' },
-    { key: 'mcapTarget', label: 'Mcap Target', placeholder: '$30M' },
-    { key: 'supplyControl', label: 'Supply Control %', placeholder: '98.4%' },
-    { key: 'treasury', label: 'Treasury Balance (USD, numbers only)', placeholder: '1240000' },
-    { key: 'buyers', label: 'Buyers (24h)', placeholder: '14200' },
-    { key: 'sellers', label: 'Sellers (24h)', placeholder: '284' },
-    { key: 'ratio', label: 'Buy/Sell Ratio', placeholder: '50:1' },
-    { key: 'fees24h', label: 'Fees Claimed 24h', placeholder: '$11.4k' },
-    { key: 'poolAddress', label: 'Meteora DLMM Pool Address', placeholder: 'Pool address', mono: true },
-    { key: 'rpcUrl', label: 'Solana RPC URL', placeholder: 'http://127.0.0.1:8899', mono: true },
-    { key: 'notes', label: 'Notes', placeholder: 'Any internal notes...', area: true },
-  ];
-
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+      {/* Token lookup */}
       <div className="bg-[#1a1b1e] border border-[#2a2b2e] rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#2a2b2e] flex items-center justify-between">
-          <div>
-            <h2 className="text-white text-sm font-medium">launch config</h2>
-            <p className="text-[#4b5563] text-xs mt-0.5">change launch token, addresses, and targets — no code needed</p>
-          </div>
+        <div className="px-5 py-4 border-b border-[#2a2b2e]">
+          <h2 className="text-white text-sm font-medium">switch launch token</h2>
+          <p className="text-[#4b5563] text-xs mt-0.5">paste a Jupiter link or Solana mint address — we fetch everything</p>
+        </div>
+        <div className="p-5 space-y-3">
           <div className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => { setInput(e.target.value); setToken(null); setError(null); }}
+              onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
+              placeholder="https://jup.ag/tokens/... or mint address"
+              className="flex-1 bg-[#111213] border border-[#2a2b2e] rounded-lg px-3 py-2.5 text-sm text-[#d1d5db] placeholder-[#374151] outline-none focus:border-[#4b5563] font-mono"
+            />
             <button
-              onClick={handleReset}
-              className="px-3 py-1.5 rounded-lg border border-[#2a2b2e] text-[#6b7280] text-xs hover:border-[#4b4c4f] transition-colors"
+              onClick={handleLookup}
+              disabled={loading || !input.trim()}
+              className="px-4 py-2.5 rounded-lg bg-[#1f2023] border border-[#2a2b2e] text-[#d1d5db] text-sm hover:border-[#4b4c4f] disabled:opacity-40 transition-colors whitespace-nowrap"
             >
-              reset
-            </button>
-            <button
-              onClick={handleSave}
-              className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                saved
-                  ? 'bg-[#052e16] border border-[#166534] text-[#4ade80]'
-                  : 'bg-[#4ade80] hover:bg-[#22c55e] text-black'
-              }`}
-            >
-              {saved ? '✓ saved' : 'save & apply'}
+              {loading ? 'fetching...' : 'look up'}
             </button>
           </div>
-        </div>
 
-        <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {fields.map(({ key, label, placeholder, mono, area }) => (
-            <div key={key} className={area ? 'md:col-span-2' : ''}>
-              <label className="block text-[#6b7280] text-xs mb-1.5 uppercase tracking-wider">{label}</label>
-              {area ? (
-                <textarea
-                  value={config[key]}
-                  onChange={(e) => setConfig((c) => ({ ...c, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  rows={3}
-                  className={`w-full bg-[#111213] border border-[#2a2b2e] rounded-lg px-3 py-2 text-sm text-[#d1d5db] placeholder-[#374151] outline-none focus:border-[#4b5563] resize-none ${mono ? 'font-mono' : ''}`}
-                />
-              ) : (
-                <input
-                  type="text"
-                  value={config[key]}
-                  onChange={(e) => setConfig((c) => ({ ...c, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  className={`w-full bg-[#111213] border border-[#2a2b2e] rounded-lg px-3 py-2 text-sm text-[#d1d5db] placeholder-[#374151] outline-none focus:border-[#4b5563] ${mono ? 'font-mono text-xs' : ''}`}
-                />
-              )}
+          {error && (
+            <p className="text-red-400 text-xs">{error}</p>
+          )}
+
+          {token && (
+            <div className="bg-[#111213] border border-[#2a2b2e] rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-white font-semibold">${token.ticker}</span>
+                  <span className="text-[#6b7280] text-sm ml-2">{token.name}</span>
+                </div>
+                <span className="text-[#4ade80] text-xs px-2 py-0.5 rounded-full border border-[#166534] bg-[#052e16]">found</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-[#4b5563] uppercase tracking-wider">mint</span>
+                  <p className="text-[#6b7280] font-mono mt-0.5 truncate">{token.mint}</p>
+                </div>
+                <div>
+                  <span className="text-[#4b5563] uppercase tracking-wider">price</span>
+                  <p className="text-[#d1d5db] mt-0.5">{token.price}</p>
+                </div>
+                <div>
+                  <span className="text-[#4b5563] uppercase tracking-wider">mcap</span>
+                  <p className="text-[#4ade80] mt-0.5">{token.mcap}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#1f2023]">
+                <div>
+                  <label className="text-[#4b5563] text-xs uppercase tracking-wider">mcap target</label>
+                  <input
+                    type="text"
+                    value={mcapTarget}
+                    onChange={(e) => setMcapTarget(e.target.value)}
+                    placeholder="$30M"
+                    className="mt-1 w-full bg-[#1a1b1e] border border-[#2a2b2e] rounded px-2 py-1.5 text-sm text-[#d1d5db] outline-none focus:border-[#4b5563]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[#4b5563] text-xs uppercase tracking-wider">supply control %</label>
+                  <input
+                    type="text"
+                    value={supplyControl}
+                    onChange={(e) => setSupplyControl(e.target.value)}
+                    placeholder="98.4%"
+                    className="mt-1 w-full bg-[#1a1b1e] border border-[#2a2b2e] rounded px-2 py-1.5 text-sm text-[#d1d5db] outline-none focus:border-[#4b5563]"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[#4b5563] text-xs uppercase tracking-wider">notes</label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Internal notes..."
+                    rows={2}
+                    className="mt-1 w-full bg-[#1a1b1e] border border-[#2a2b2e] rounded px-2 py-1.5 text-sm text-[#d1d5db] placeholder-[#374151] outline-none focus:border-[#4b5563] resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleReset}
+                  className="px-3 py-1.5 rounded-lg border border-[#2a2b2e] text-[#6b7280] text-xs hover:border-[#4b4c4f] transition-colors"
+                >
+                  reset
+                </button>
+                <button
+                  onClick={handleApply}
+                  className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    applied
+                      ? 'bg-[#052e16] border border-[#166534] text-[#4ade80]'
+                      : 'bg-[#4ade80] hover:bg-[#22c55e] text-black'
+                  }`}
+                >
+                  {applied ? '✓ applied' : 'apply to dashboard'}
+                </button>
+              </div>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
-      <div className="bg-[#1a1b1e] border border-[#2a2b2e] rounded-xl p-5">
-        <h3 className="text-white text-sm font-medium mb-3">how to switch to a new launch</h3>
-        <ol className="space-y-2 text-[#9ca3af] text-sm">
-          <li className="flex gap-3"><span className="text-[#4ade80] font-mono text-xs mt-0.5">01</span><span>Update <span className="text-[#d1d5db]">Token Name</span>, <span className="text-[#d1d5db]">Ticker</span>, and <span className="text-[#d1d5db]">Contract Address</span> above</span></li>
-          <li className="flex gap-3"><span className="text-[#4ade80] font-mono text-xs mt-0.5">02</span><span>Paste the new <span className="text-[#d1d5db]">Meteora DLMM Pool Address</span></span></li>
-          <li className="flex gap-3"><span className="text-[#4ade80] font-mono text-xs mt-0.5">03</span><span>Click <span className="text-[#d1d5db]">save & apply</span> — stats update instantly on the MM bot tab</span></li>
-          <li className="flex gap-3"><span className="text-[#4ade80] font-mono text-xs mt-0.5">04</span><span>Go to <span className="text-[#d1d5db]">KOL tool → new campaign</span> to set up KOLs for the new token</span></li>
-          <li className="flex gap-3"><span className="text-[#4ade80] font-mono text-xs mt-0.5">05</span><span>Update <span className="text-[#d1d5db]">USDC_MINT</span> on the backend server if using a different mint for payouts</span></li>
-        </ol>
-      </div>
+      {/* Current active */}
+      {saved?.token && !token && (
+        <div className="bg-[#1a1b1e] border border-[#2a2b2e] rounded-xl px-5 py-4 flex items-center justify-between">
+          <div>
+            <span className="text-[#6b7280] text-xs uppercase tracking-wider">current active token</span>
+            <p className="text-white font-semibold mt-0.5">${saved.token.ticker} <span className="text-[#6b7280] font-normal text-sm">— {saved.token.name}</span></p>
+            <p className="text-[#4b5563] font-mono text-xs mt-0.5">{saved.token.mint}</p>
+          </div>
+          <button onClick={handleReset} className="text-xs text-red-500 hover:text-red-400 border border-red-900 px-2 py-1 rounded">clear</button>
+        </div>
+      )}
     </div>
   );
 }
