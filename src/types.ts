@@ -106,6 +106,8 @@ export interface PaymentRecord {
   id: string;
   kol_handle?: string;
   kol?: string;
+  campaign_name?: string;
+  campaign_id?: string;
   wallet: string;
   amount: number;
   tx_hash?: string | null;

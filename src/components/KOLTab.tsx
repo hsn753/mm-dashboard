@@ -412,29 +412,31 @@ export default function KOLTab() {
             <thead>
               <tr className="text-[#6b7280] text-xs border-b border-[#2a2b2e]">
                 <th className="text-left px-4 py-2 font-normal">kol</th>
-                <th className="text-left px-4 py-2 font-normal">wallet</th>
+                <th className="text-left px-4 py-2 font-normal">campaign</th>
                 <th className="text-left px-4 py-2 font-normal">amount</th>
+                <th className="text-left px-4 py-2 font-normal">wallet</th>
                 <th className="text-left px-4 py-2 font-normal">tx</th>
-                <th className="text-left px-4 py-2 font-normal">time</th>
+                <th className="text-left px-4 py-2 font-normal">date / time</th>
                 <th className="text-right px-4 py-2 font-normal">status</th>
               </tr>
             </thead>
             <tbody>
               {loading ? <Spinner /> : payments.length === 0
-                ? <EmptyRow cols={6} msg="No payments yet" />
+                ? <EmptyRow cols={7} msg="No payments yet" />
                 : payments.map((p) => (
                   <tr key={p.id} className="border-b border-[#2a2b2e] last:border-0 hover:bg-[#1f2023]">
-                    <td className="px-4 py-2.5 text-[#d1d5db]">{p.kol_handle ?? p.kol}</td>
-                    <td className="px-4 py-2.5 text-[#6b7280] font-mono text-xs">{p.wallet}</td>
-                    <td className="px-4 py-2.5 text-[#4ade80]">${Number(p.amount).toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-[#d1d5db]">{p.kol_handle ?? p.kol ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-[#9ca3af] text-xs">{p.campaign_name ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-[#4ade80] font-medium">${Number(p.amount).toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-[#6b7280] font-mono text-xs">{p.wallet ? p.wallet.slice(0,8)+'...' : '—'}</td>
                     <td className="px-4 py-2.5">
                       {(p.tx_hash ?? p.txHash) ? (
                         <a href={`https://solscan.io/tx/${p.tx_hash ?? p.txHash}`} target="_blank" rel="noreferrer" className="text-[#60a5fa] font-mono hover:underline text-xs">
-                          {String(p.tx_hash ?? p.txHash).slice(0, 12)}...
+                          {String(p.tx_hash ?? p.txHash).slice(0, 10)}...
                         </a>
                       ) : <span className="text-[#4b5563]">—</span>}
                     </td>
-                    <td className="px-4 py-2.5 text-[#6b7280]">{new Date((p.created_at ?? p.timestamp) as string).toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-[#6b7280] text-xs">{new Date((p.created_at ?? p.timestamp) as string).toLocaleString()}</td>
                     <td className="px-4 py-2.5 text-right">
                       <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_STYLES[p.status] ?? ''}`}>
                         {p.status}
