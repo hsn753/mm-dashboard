@@ -16,7 +16,9 @@ export const api = {
     list: () => http.get<Campaign[]>('/api/campaigns').then((r) => r.data),
     create: (body: Omit<Campaign, 'id' | 'status'>) => http.post<Campaign>('/api/campaigns', body).then((r) => r.data),
     update: (id: string, body: Partial<Campaign>) => http.put<Campaign>(`/api/campaigns/${id}`, body).then((r) => r.data),
+    remove: (id: string) => http.delete(`/api/campaigns/${id}`).then((r) => r.data),
     assign: (id: string, kol_ids: string[]) => http.post(`/api/campaigns/${id}/assign`, { kol_ids }).then((r) => r.data),
+    unassign: (id: string, kol_id: string) => http.post(`/api/campaigns/${id}/unassign`, { kol_id }).then((r) => r.data),
   },
   scripts: {
     distribute: (slot: 'am' | 'pm') => http.post('/api/scripts/distribute', { slot }).then((r) => r.data),
