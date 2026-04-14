@@ -11,9 +11,9 @@ export default function CampaignModal({ onSave, onClose }: Props) {
     name: '',
     ticker: '',
     cashtag: '',
-    startDate: '',
-    endDate: '',
-    scriptTemplate: 'Hey {{handle}}, here\'s your script for {{cashtag}} today:\n\n{{angle}}\n\nPost between 8-10am EST. Tag {{cashtag}} and include the chart link.',
+    start_date: '',
+    end_date: '',
+    script_template: 'Hey {{handle}}, here\'s your script for {{cashtag}} today:\n\n{{angle}}\n\nPost between 8-10am EST. Tag {{cashtag}} and include the chart link.',
   });
 
   function set(field: string, value: string) {
@@ -35,8 +35,8 @@ export default function CampaignModal({ onSave, onClose }: Props) {
               { label: 'campaign name', field: 'name', placeholder: 'e.g. aspen launch' },
               { label: 'ticker', field: 'ticker', placeholder: 'ASPEN' },
               { label: 'cashtag', field: 'cashtag', placeholder: '$ASPEN' },
-              { label: 'start date', field: 'startDate', placeholder: 'YYYY-MM-DD' },
-              { label: 'end date', field: 'endDate', placeholder: 'YYYY-MM-DD' },
+              { label: 'start date', field: 'start_date', placeholder: 'YYYY-MM-DD' },
+              { label: 'end date', field: 'end_date', placeholder: 'YYYY-MM-DD' },
             ].map(({ label, field, placeholder }) => (
               <div key={field} className={field === 'name' ? 'col-span-2' : ''}>
                 <label className="block text-xs text-[#6b7280] mb-1">{label}</label>
@@ -56,8 +56,8 @@ export default function CampaignModal({ onSave, onClose }: Props) {
               script template <span className="text-[#4b5563]">(vars: {'{{handle}}'}, {'{{cashtag}}'}, {'{{angle}}'})</span>
             </label>
             <textarea
-              value={form.scriptTemplate}
-              onChange={(e) => set('scriptTemplate', e.target.value)}
+              value={form.script_template}
+              onChange={(e) => set('script_template', e.target.value)}
               rows={4}
               className="w-full bg-[#111213] border border-[#2a2b2e] rounded-lg px-3 py-2 text-sm text-[#d1d5db] placeholder-[#4b5563] outline-none focus:border-[#4b5563] resize-none"
             />

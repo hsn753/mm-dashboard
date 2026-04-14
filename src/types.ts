@@ -43,9 +43,12 @@ export interface KOL {
   handle: string;
   wallet: string;
   rate: number;
-  campaign: string;
-  scriptSchedule: 'am + pm' | 'am only' | 'pm only';
+  campaign_id?: string | null;
+  campaign?: string;
+  script_schedule: 'am + pm' | 'am only' | 'pm only';
+  scriptSchedule?: 'am + pm' | 'am only' | 'pm only';
   status: 'paid' | 'pending' | 'queued_pm' | 'queued_am';
+  telegram_username?: string | null;
   telegramUsername?: string;
 }
 
@@ -54,35 +57,54 @@ export interface Campaign {
   name: string;
   ticker: string;
   cashtag: string;
-  startDate: string;
-  endDate: string;
-  scriptTemplate: string;
+  start_date: string;
+  end_date: string;
+  script_template: string;
+  startDate?: string;
+  endDate?: string;
+  scriptTemplate?: string;
   status: 'active' | 'inactive';
 }
 
 export interface ScriptQueueItem {
-  kolHandle: string;
-  angle: string;
-  sendMethod: string;
-  scheduledAt: string;
+  kolHandle?: string;
+  angle?: string;
+  sendMethod?: string;
+  scheduledAt?: string;
+}
+
+export interface ScriptLog {
+  id: string;
+  kol_handle: string;
+  campaign_name: string;
+  slot: string;
+  status: string;
+  sent_at: string;
 }
 
 export interface AuditLog {
   id: string;
-  timestamp: string;
+  created_at: string;
+  timestamp?: string;
   action: string;
-  kol: string;
-  campaign: string;
+  kol_handle: string;
+  kol?: string;
+  campaign_name?: string;
+  campaign?: string;
   detail: string;
+  tx_hash?: string | null;
   txHash?: string;
 }
 
 export interface PaymentRecord {
   id: string;
-  kol: string;
+  kol_handle?: string;
+  kol?: string;
   wallet: string;
   amount: number;
-  txHash: string;
-  timestamp: string;
+  tx_hash?: string | null;
+  txHash?: string;
+  created_at?: string;
+  timestamp?: string;
   status: 'confirmed' | 'pending' | 'failed';
 }

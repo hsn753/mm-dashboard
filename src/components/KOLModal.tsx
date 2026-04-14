@@ -13,9 +13,9 @@ export default function KOLModal({ kol, onSave, onClose }: Props) {
     wallet: kol?.wallet ?? '',
     rate: kol?.rate ?? 0,
     campaign: kol?.campaign ?? '',
-    scriptSchedule: kol?.scriptSchedule ?? 'am + pm' as KOL['scriptSchedule'],
+    script_schedule: (kol?.script_schedule ?? kol?.scriptSchedule ?? 'am + pm') as KOL['script_schedule'],
     status: kol?.status ?? 'pending' as KOL['status'],
-    telegramUsername: kol?.telegramUsername ?? '',
+    telegram_username: kol?.telegram_username ?? kol?.telegramUsername ?? '',
   });
 
   function set(field: string, value: string | number) {
@@ -37,7 +37,7 @@ export default function KOLModal({ kol, onSave, onClose }: Props) {
             { label: 'wallet', field: 'wallet', type: 'text', placeholder: 'Solana wallet address' },
             { label: 'rate (USDC)', field: 'rate', type: 'number', placeholder: '0' },
             { label: 'campaign', field: 'campaign', type: 'text', placeholder: 'campaign name' },
-            { label: 'telegram username', field: 'telegramUsername', type: 'text', placeholder: 'username (no @)' },
+            { label: 'telegram username', field: 'telegram_username', type: 'text', placeholder: 'username (no @)' },
           ].map(({ label, field, type, placeholder }) => (
             <div key={field}>
               <label className="block text-xs text-[#6b7280] mb-1">{label}</label>
@@ -46,7 +46,7 @@ export default function KOLModal({ kol, onSave, onClose }: Props) {
                 value={(form as Record<string, string | number>)[field]}
                 onChange={(e) => set(field, type === 'number' ? Number(e.target.value) : e.target.value)}
                 placeholder={placeholder}
-                required={field !== 'telegramUsername'}
+                required={field !== 'telegram_username'}
                 className="w-full bg-[#111213] border border-[#2a2b2e] rounded-lg px-3 py-2 text-sm text-[#d1d5db] placeholder-[#4b5563] outline-none focus:border-[#4b5563]"
               />
             </div>
@@ -54,8 +54,8 @@ export default function KOLModal({ kol, onSave, onClose }: Props) {
           <div>
             <label className="block text-xs text-[#6b7280] mb-1">script schedule</label>
             <select
-              value={form.scriptSchedule}
-              onChange={(e) => set('scriptSchedule', e.target.value)}
+              value={form.script_schedule}
+              onChange={(e) => set('script_schedule', e.target.value)}
               className="w-full bg-[#111213] border border-[#2a2b2e] rounded-lg px-3 py-2 text-sm text-[#d1d5db] outline-none focus:border-[#4b5563]"
             >
               <option value="am + pm">am + pm</option>

@@ -38,10 +38,10 @@ export const mockHolders: HolderRow[] = [
 ];
 
 export const mockKOLs: KOL[] = [
-  { id: '1', handle: '@cryptomoon', wallet: '7Hx...9k', rate: 800, campaign: 'aspen launch', scriptSchedule: 'am + pm', status: 'paid', telegramUsername: 'cryptomoon' },
-  { id: '2', handle: '@degenalpha', wallet: '3Pq...2m', rate: 1200, campaign: 'aspen launch', scriptSchedule: 'am + pm', status: 'paid', telegramUsername: 'degenalpha' },
-  { id: '3', handle: '@solkingg', wallet: '9Rz...8c', rate: 500, campaign: 'aspen launch', scriptSchedule: 'am only', status: 'queued_pm', telegramUsername: 'solkingg' },
-  { id: '4', handle: '@frogdaddy', wallet: '2Kn...5p', rate: 2000, campaign: 'aspen launch', scriptSchedule: 'am + pm', status: 'paid', telegramUsername: 'frogdaddy' },
+  { id: '1', handle: '@cryptomoon', wallet: '7Hx...9k', rate: 800, campaign: 'aspen launch', script_schedule: 'am + pm', status: 'paid', telegram_username: 'cryptomoon' },
+  { id: '2', handle: '@degenalpha', wallet: '3Pq...2m', rate: 1200, campaign: 'aspen launch', script_schedule: 'am + pm', status: 'paid', telegram_username: 'degenalpha' },
+  { id: '3', handle: '@solkingg', wallet: '9Rz...8c', rate: 500, campaign: 'aspen launch', script_schedule: 'am only', status: 'queued_pm', telegram_username: 'solkingg' },
+  { id: '4', handle: '@frogdaddy', wallet: '2Kn...5p', rate: 2000, campaign: 'aspen launch', script_schedule: 'am + pm', status: 'paid', telegram_username: 'frogdaddy' },
 ];
 
 export const mockCampaigns: Campaign[] = [
@@ -50,9 +50,9 @@ export const mockCampaigns: Campaign[] = [
     name: 'aspen launch',
     ticker: 'ASPEN',
     cashtag: '$ASPEN',
-    startDate: '2026-04-14',
-    endDate: '2026-04-21',
-    scriptTemplate: 'Hey {{handle}}, here\'s your script for {{cashtag}} today:\n\n{{angle}}\n\nMake sure to post between 8-10am EST. Tag $ASPEN and include the chart link.',
+    start_date: '2026-04-14',
+    end_date: '2026-04-21',
+    script_template: 'Hey {{handle}}, here\'s your script for {{cashtag}} today:\n\n{{angle}}\n\nMake sure to post between 8-10am EST. Tag $ASPEN and include the chart link.',
     status: 'active',
   },
 ];
@@ -64,15 +64,15 @@ export const mockScriptQueue: ScriptQueueItem[] = [
 ];
 
 export const mockAuditLog: AuditLog[] = [
-  { id: '1', timestamp: '2026-04-14 08:01', action: 'script_sent', kol: '@cryptomoon', campaign: 'aspen launch', detail: 'AM script delivered via TG DM' },
-  { id: '2', timestamp: '2026-04-14 08:01', action: 'script_sent', kol: '@degenalpha', campaign: 'aspen launch', detail: 'AM script delivered via TG DM' },
-  { id: '3', timestamp: '2026-04-14 07:55', action: 'payment', kol: '@frogdaddy', campaign: 'aspen launch', detail: 'USDC batch payout', txHash: '5Kj...a2' },
-  { id: '4', timestamp: '2026-04-13 18:02', action: 'script_sent', kol: '@solkingg', campaign: 'aspen launch', detail: 'PM script delivered via TG DM' },
-  { id: '5', timestamp: '2026-04-13 08:00', action: 'kol_added', kol: '@frogdaddy', campaign: 'aspen launch', detail: 'KOL added to roster' },
+  { id: '1', created_at: '2026-04-14T08:01:00Z', action: 'script_sent', kol_handle: '@cryptomoon', campaign_name: 'aspen launch', detail: 'AM script delivered via TG DM' },
+  { id: '2', created_at: '2026-04-14T08:01:00Z', action: 'script_sent', kol_handle: '@degenalpha', campaign_name: 'aspen launch', detail: 'AM script delivered via TG DM' },
+  { id: '3', created_at: '2026-04-14T07:55:00Z', action: 'payment', kol_handle: '@frogdaddy', campaign_name: 'aspen launch', detail: 'USDC batch payout', tx_hash: '5Kj...a2' },
+  { id: '4', created_at: '2026-04-13T18:02:00Z', action: 'script_sent', kol_handle: '@solkingg', campaign_name: 'aspen launch', detail: 'PM script delivered via TG DM' },
+  { id: '5', created_at: '2026-04-13T08:00:00Z', action: 'kol_added', kol_handle: '@frogdaddy', campaign_name: 'aspen launch', detail: 'KOL added to roster' },
 ];
 
 export const mockPayments: PaymentRecord[] = [
-  { id: '1', kol: '@cryptomoon', wallet: '7Hx...9k', amount: 800, txHash: '5Kj...a2', timestamp: '2026-04-14 07:55', status: 'confirmed' },
-  { id: '2', kol: '@degenalpha', wallet: '3Pq...2m', amount: 1200, txHash: '9Xp...f1', timestamp: '2026-04-14 07:55', status: 'confirmed' },
-  { id: '3', kol: '@frogdaddy', wallet: '2Kn...5p', amount: 2000, txHash: '2Mn...c8', timestamp: '2026-04-14 07:55', status: 'confirmed' },
+  { id: '1', kol_handle: '@cryptomoon', wallet: '7Hx...9k', amount: 800, tx_hash: '5Kj...a2', created_at: '2026-04-14T07:55:00Z', status: 'confirmed' },
+  { id: '2', kol_handle: '@degenalpha', wallet: '3Pq...2m', amount: 1200, tx_hash: '9Xp...f1', created_at: '2026-04-14T07:55:00Z', status: 'confirmed' },
+  { id: '3', kol_handle: '@frogdaddy', wallet: '2Kn...5p', amount: 2000, tx_hash: '2Mn...c8', created_at: '2026-04-14T07:55:00Z', status: 'confirmed' },
 ];

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { Transaction, MMStats, MirrorRule, KOL, Campaign } from './types';
-import { mockMMStats, mockMirrorRules, mockTransactions, mockKOLs, mockCampaigns } from './mockData';
+import type { Transaction, MMStats, MirrorRule } from './types';
+import { mockMMStats, mockMirrorRules, mockTransactions } from './mockData';
 
 interface MMStore {
   stats: MMStats;
@@ -14,18 +14,6 @@ interface MMStore {
   addTransaction: (tx: Transaction) => void;
   setPaused: (v: boolean) => void;
   setWsConnected: (v: boolean) => void;
-}
-
-interface KOLStore {
-  kols: KOL[];
-  campaigns: Campaign[];
-  activeCampaignId: string | null;
-  setKOLs: (k: KOL[]) => void;
-  addKOL: (k: KOL) => void;
-  updateKOL: (id: string, k: Partial<KOL>) => void;
-  deleteKOL: (id: string) => void;
-  setCampaigns: (c: Campaign[]) => void;
-  setActiveCampaign: (id: string) => void;
 }
 
 export const useMMStore = create<MMStore>((set) => ({
@@ -48,20 +36,4 @@ export const useMMStore = create<MMStore>((set) => ({
     })),
   setPaused: (isPaused) => set({ isPaused }),
   setWsConnected: (wsConnected) => set({ wsConnected }),
-}));
-
-export const useKOLStore = create<KOLStore>((set) => ({
-  kols: mockKOLs,
-  campaigns: mockCampaigns,
-  activeCampaignId: '1',
-  setKOLs: (kols) => set({ kols }),
-  addKOL: (k) => set((state) => ({ kols: [...state.kols, k] })),
-  updateKOL: (id, k) =>
-    set((state) => ({
-      kols: state.kols.map((kol) => (kol.id === id ? { ...kol, ...k } : kol)),
-    })),
-  deleteKOL: (id) =>
-    set((state) => ({ kols: state.kols.filter((k) => k.id !== id) })),
-  setCampaigns: (campaigns) => set({ campaigns }),
-  setActiveCampaign: (activeCampaignId) => set({ activeCampaignId }),
 }));
