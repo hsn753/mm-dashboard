@@ -114,7 +114,14 @@ export default function MMTab() {
                         />
                       </td>
                     ))}
-                    <td className="px-4 py-2 text-[#6b7280] text-xs">{rule.action}</td>
+                    <td className="px-2 py-2">
+                      <input
+                        type="text"
+                        value={editDraft.action ?? ''}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, action: e.target.value }))}
+                        className="w-48 bg-[#1a1b1e] border border-[#4ade80]/40 rounded px-2 py-1 text-xs text-[#d1d5db] outline-none focus:border-[#4ade80]"
+                      />
+                    </td>
                     <td className="px-4 py-2 text-right">
                       <button onClick={saveEdit} className="text-xs px-2 py-0.5 rounded border border-[#166534] bg-[#052e16] text-[#4ade80] mr-1">save</button>
                       <button onClick={() => setEditingRule(null)} className="text-xs px-2 py-0.5 rounded border border-[#374151] text-[#6b7280]">✕</button>
