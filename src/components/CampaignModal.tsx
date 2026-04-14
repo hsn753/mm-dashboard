@@ -32,16 +32,14 @@ export default function CampaignModal({ onSave, onClose }: Props) {
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'campaign name', field: 'name', placeholder: 'e.g. aspen launch' },
-              { label: 'ticker', field: 'ticker', placeholder: 'ASPEN' },
-              { label: 'cashtag', field: 'cashtag', placeholder: '$ASPEN' },
-              { label: 'start date', field: 'start_date', placeholder: 'YYYY-MM-DD' },
-              { label: 'end date', field: 'end_date', placeholder: 'YYYY-MM-DD' },
-            ].map(({ label, field, placeholder }) => (
+              { label: 'campaign name', field: 'name', placeholder: 'e.g. aspen launch', type: 'text' },
+              { label: 'ticker', field: 'ticker', placeholder: 'ASPEN', type: 'text' },
+              { label: 'cashtag', field: 'cashtag', placeholder: '$ASPEN', type: 'text' },
+            ].map(({ label, field, placeholder, type }) => (
               <div key={field} className={field === 'name' ? 'col-span-2' : ''}>
                 <label className="block text-xs text-[#6b7280] mb-1">{label}</label>
                 <input
-                  type="text"
+                  type={type}
                   value={(form as Record<string, string>)[field]}
                   onChange={(e) => set(field, e.target.value)}
                   placeholder={placeholder}
@@ -50,6 +48,26 @@ export default function CampaignModal({ onSave, onClose }: Props) {
                 />
               </div>
             ))}
+            <div>
+              <label className="block text-xs text-[#6b7280] mb-1">start date</label>
+              <input
+                type="date"
+                value={form.start_date}
+                onChange={(e) => set('start_date', e.target.value)}
+                required
+                className="w-full bg-[#111213] border border-[#2a2b2e] rounded-lg px-3 py-2 text-sm text-[#d1d5db] outline-none focus:border-[#4b5563] [color-scheme:dark]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-[#6b7280] mb-1">end date</label>
+              <input
+                type="date"
+                value={form.end_date}
+                onChange={(e) => set('end_date', e.target.value)}
+                required
+                className="w-full bg-[#111213] border border-[#2a2b2e] rounded-lg px-3 py-2 text-sm text-[#d1d5db] outline-none focus:border-[#4b5563] [color-scheme:dark]"
+              />
+            </div>
           </div>
           <div>
             <label className="block text-xs text-[#6b7280] mb-1">
