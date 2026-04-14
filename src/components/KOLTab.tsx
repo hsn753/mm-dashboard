@@ -21,7 +21,6 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 type SubView = 'roster' | 'payments' | 'audit';
-type AssignModal = { campaignId: string; campaignName: string } | null;
 
 function EmptyRow({ cols, msg }: { cols: number; msg: string }) {
   return (
@@ -58,8 +57,7 @@ export default function KOLTab() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [showPayConfirm, setShowPayConfirm] = useState(false);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
-  const [assignModal, setAssignModal] = useState<AssignModal>(null);
-  const [assignSelected, setAssignSelected] = useState<string[]>([]);
+  const [togglingKol, setTogglingKol] = useState<string | null>(null);
 
   const activeCampaign = campaigns.find((c) => c.id === selectedCampaignId) ?? campaigns.find((c) => c.status === 'active') ?? campaigns[0];
   const totalPaid = payments.filter((p) => p.status === 'confirmed').reduce((s, p) => s + Number(p.amount), 0);
@@ -143,15 +141,23 @@ export default function KOLTab() {
     }
   }
 
-  async function handleUnassignKOL(kolId: string, handle: string) {
+  async function handleToggleAssign(kol: KOL) {
     if (!activeCampaign) return;
-    if (!confirm(`Remove ${handle} from campaign "${activeCampaign.name}"? They stay in the roster.`)) return;
+    setTogglingKol(kol.id);
     try {
-      await api.campaigns.unassign(activeCampaign.id, kolId);
-      showToast(`${handle} removed from ${activeCampaign.name}`);
+      if (kol.campaign_id === activeCampaign.id) {
+        await api.campaigns.unassign(activeCampaign.id, kol.id);
+        showToast(`${kol.handle} unassigned from ${activeCampaign.name}`);
+      } else {
+        const result = await api.campaigns.assign(activeCampaign.id, [kol.id]) as { telegram: Array<{ ok: boolean }> };
+        const tgOk = result.telegram?.filter((t) => t.ok).length ?? 0;
+        showToast(`${kol.handle} assigned to ${activeCampaign.name}${tgOk > 0 ? ' — Telegram DM sent' : ''}`);
+      }
       loadAll();
     } catch {
-      showToast('Error unassigning KOL');
+      showToast('Error updating assignment');
+    } finally {
+      setTogglingKol(null);
     }
   }
 
@@ -167,18 +173,23 @@ export default function KOLTab() {
     }
   }
 
-  async function handleAssignKOLs() {
-    if (!assignModal || assignSelected.length === 0) return;
-    try {
-      const result = await api.campaigns.assign(assignModal.campaignId, assignSelected) as { assigned: number; telegram: Array<{ kol: string; ok: boolean }> };
-      const tgOk = result.telegram?.filter((t) => t.ok).length ?? 0;
-      showToast(`${result.assigned} KOL(s) assigned${tgOk > 0 ? `, ${tgOk} Telegram DM(s) sent` : ''}`);
-      setAssignModal(null);
-      setAssignSelected([]);
-      loadAll();
-    } catch {
-      showToast('Error assigning KOLs');
-    }
+  function exportPaymentsCSV() {
+    const headers = ['KOL','Campaign','Amount (USDC)','Wallet','TX Hash','Date','Status'];
+    const rows = payments.map((p) => [
+      p.kol_handle ?? p.kol ?? '',
+      p.campaign_name ?? '',
+      Number(p.amount).toFixed(2),
+      p.wallet,
+      p.tx_hash ?? p.txHash ?? '',
+      new Date((p.created_at ?? p.timestamp) as string).toLocaleString(),
+      p.status,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `payments-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
   }
 
   async function handleSaveCampaign(data: Omit<Campaign, 'id' | 'status'>) {
@@ -269,10 +280,6 @@ export default function KOLTab() {
                 title="delete campaign"
                 className="text-[#4b5563] hover:text-red-500 text-xs leading-none transition-colors"
               >✕</button>
-              <button
-                onClick={() => { setAssignModal({ campaignId: c.id, campaignName: c.name }); setAssignSelected([]); }}
-                className="px-2 py-0.5 rounded text-xs border border-[#2a2b2e] text-[#6b7280] hover:border-[#4b4c4f] hover:text-[#9ca3af] transition-colors"
-              >assign</button>
             </div>
           ))}
         </div>
@@ -337,10 +344,19 @@ export default function KOLTab() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button onClick={() => { setEditingKOL(kol); setShowKOLModal(true); }} className="text-xs text-[#6b7280] hover:text-[#9ca3af] mr-3">edit</button>
-                          {kol.campaign_id
-                            ? <button onClick={() => handleUnassignKOL(kol.id, kol.handle)} className="text-xs text-yellow-700 hover:text-yellow-500 mr-3" title="remove from this campaign">unassign</button>
-                            : null
-                          }
+                          {activeCampaign && (
+                            <button
+                              onClick={() => handleToggleAssign(kol)}
+                              disabled={togglingKol === kol.id}
+                              className={`text-xs mr-3 transition-colors disabled:opacity-40 ${
+                                kol.campaign_id === activeCampaign.id
+                                  ? 'text-yellow-600 hover:text-yellow-400'
+                                  : 'text-[#4ade80] hover:text-green-300'
+                              }`}
+                            >
+                              {togglingKol === kol.id ? '...' : kol.campaign_id === activeCampaign.id ? 'unassign' : 'assign'}
+                            </button>
+                          )}
                           <button onClick={() => handleDeleteKOL(kol.id, kol.handle)} className="text-xs text-red-900 hover:text-red-500" title="permanently delete from roster">del</button>
                         </td>
                       </tr>
@@ -382,9 +398,9 @@ export default function KOLTab() {
                 </tr>
               </thead>
               <tbody>
-                {loading ? <Spinner /> : scriptLog.length === 0
-                  ? <EmptyRow cols={4} msg="No scripts sent yet" />
-                  : scriptLog.slice(0, 10).map((s, i) => (
+                {loading ? <Spinner /> : scriptLog.filter((s) => !activeCampaign || s.campaign_name === activeCampaign.name).length === 0
+                  ? <EmptyRow cols={4} msg="No scripts sent for this campaign yet" />
+                  : scriptLog.filter((s) => !activeCampaign || s.campaign_name === activeCampaign.name).slice(0, 20).map((s, i) => (
                     <tr key={i} className="border-b border-[#2a2b2e] last:border-0 hover:bg-[#1f2023]">
                       <td className="px-4 py-2.5 text-[#d1d5db]">{s.kol_handle}</td>
                       <td className="px-4 py-2.5 text-[#9ca3af]">{s.slot}</td>
@@ -405,8 +421,9 @@ export default function KOLTab() {
 
       {subView === 'payments' && (
         <div className="bg-[#1a1b1e] border border-[#2a2b2e] rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#2a2b2e]">
+          <div className="px-4 py-3 border-b border-[#2a2b2e] flex items-center justify-between">
             <span className="text-sm text-white font-medium">payment history</span>
+            <button onClick={exportPaymentsCSV} className="text-xs px-3 py-1 border border-[#2a2b2e] rounded text-[#6b7280] hover:border-[#4b4c4f] hover:text-[#9ca3af] transition-colors">↓ export csv</button>
           </div>
           <table className="w-full text-sm">
             <thead>
@@ -527,32 +544,6 @@ export default function KOLTab() {
       )}
       {showCampaignModal && (
         <CampaignModal onSave={handleSaveCampaign} onClose={() => setShowCampaignModal(false)} />
-      )}
-      {assignModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-[#1a1b1e] border border-[#2a2b2e] rounded-xl p-6 w-full max-w-md">
-            <h2 className="text-white font-semibold text-base mb-1">assign KOLs to campaign</h2>
-            <p className="text-[#6b7280] text-xs mb-4">{assignModal.campaignName} — assigned KOLs will get a Telegram DM immediately</p>
-            <div className="space-y-1 max-h-60 overflow-y-auto mb-4">
-              {kols.map((k) => (
-                <label key={k.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#111213] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={assignSelected.includes(k.id)}
-                    onChange={(e) => setAssignSelected((s) => e.target.checked ? [...s, k.id] : s.filter((x) => x !== k.id))}
-                    className="accent-[#4ade80]"
-                  />
-                  <span className="text-[#d1d5db] text-sm">{k.handle}</span>
-                  <span className="text-[#4b5563] text-xs ml-auto">{k.campaign_id === assignModal.campaignId ? '✓ assigned' : ''}</span>
-                </label>
-              ))}
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => { setAssignModal(null); setAssignSelected([]); }} className="flex-1 py-2 rounded-lg border border-[#2a2b2e] text-[#9ca3af] text-sm">cancel</button>
-              <button onClick={handleAssignKOLs} disabled={assignSelected.length === 0} className="flex-1 py-2 rounded-lg bg-[#4ade80] hover:bg-[#22c55e] text-black text-sm font-medium disabled:opacity-40">assign {assignSelected.length > 0 ? `(${assignSelected.length})` : ''}</button>
-            </div>
-          </div>
-        </div>
       )}
 
       {showPayConfirm && (
