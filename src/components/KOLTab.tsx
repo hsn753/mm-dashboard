@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import StatCard from './StatCard';
 import KOLModal from './KOLModal';
 import CampaignModal from './CampaignModal';
+import PayConfirmModal from './PayConfirmModal';
 import { api } from '../api';
 import type { KOL, Campaign, AuditLog, PaymentRecord, ScriptLog } from '../types';
 
@@ -54,8 +55,10 @@ export default function KOLTab() {
   const [batchLoading, setBatchLoading] = useState(false);
   const [distributeLoading, setDistributeLoading] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [showPayConfirm, setShowPayConfirm] = useState(false);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
 
-  const activeCampaign = campaigns.find((c) => c.status === 'active');
+  const activeCampaign = campaigns.find((c) => c.id === selectedCampaignId) ?? campaigns.find((c) => c.status === 'active') ?? campaigns[0];
   const totalPaid = payments.filter((p) => p.status === 'confirmed').reduce((s, p) => s + p.amount, 0);
 
   const showToast = (msg: string) => {
@@ -79,6 +82,10 @@ export default function KOLTab() {
       setPayments(p);
       setAuditLog(a);
       setScriptLog(sl);
+      if (!selectedCampaignId && c.length > 0) {
+        const active = c.find((x) => x.status === 'active') ?? c[0];
+        setSelectedCampaignId(active.id);
+      }
     } catch (e) {
       setError('Could not reach backend. Is VITE_API_URL set correctly?');
     } finally {
@@ -95,8 +102,8 @@ export default function KOLTab() {
         wallet: data.wallet,
         rate: data.rate,
         campaign_id: activeCampaign?.id || null,
-        script_schedule: data.scriptSchedule,
-        telegram_username: data.telegramUsername || null,
+        script_schedule: data.script_schedule,
+        telegram_username: data.telegram_username || null,
       };
       if (editingKOL) {
         await api.kols.update(editingKOL.id, payload);
@@ -138,18 +145,23 @@ export default function KOLTab() {
   async function handleBatchPay() {
     const unpaid = kols.filter((k) => k.status !== 'paid' && k.wallet);
     if (!unpaid.length) { showToast('No unpaid KOLs with wallets'); return; }
-    if (!confirm(`Send USDC to ${unpaid.length} KOL(s)? This uses real funds on Solana.`)) return;
+    setShowPayConfirm(true);
+  }
+
+  async function executeBatchPay() {
+    setShowPayConfirm(false);
+    const unpaid = kols.filter((k) => k.status !== 'paid' && k.wallet);
     setBatchLoading(true);
     try {
       const result = await api.payments.batch(
-        unpaid.map((k) => ({ kol_id: k.id, wallet: k.wallet, amount: k.rate }))
+        unpaid.map((k) => ({ kol_id: k.id, wallet: k.wallet, amount: Number(k.rate) }))
       );
       const ok = result.results.filter((r: { error?: string }) => !r.error).length;
       const fail = result.results.filter((r: { error?: string }) => r.error).length;
       showToast(`Batch done — ${ok} confirmed, ${fail} failed`);
       loadAll();
-    } catch (e) {
-      showToast('Batch payment failed — check PAYER_SECRET_KEY and devnet balance');
+    } catch {
+      showToast('Batch payment failed — check PAYER_SECRET_KEY and Solana balance');
     } finally {
       setBatchLoading(false);
     }
@@ -182,6 +194,27 @@ export default function KOLTab() {
       {toastMsg && (
         <div className="fixed bottom-5 right-5 z-50 bg-[#1a1b1e] border border-[#2a2b2e] text-[#d1d5db] text-sm px-4 py-2.5 rounded-lg shadow-lg">
           {toastMsg}
+        </div>
+      )}
+
+      {/* Campaign Selector */}
+      {campaigns.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-[#6b7280]">campaign:</span>
+          {campaigns.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setSelectedCampaignId(c.id)}
+              className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                c.id === activeCampaign?.id
+                  ? 'bg-[#052e16] border-[#166534] text-[#4ade80]'
+                  : 'border-[#2a2b2e] text-[#6b7280] hover:border-[#4b4c4f] hover:text-[#9ca3af]'
+              }`}
+            >
+              {c.name}
+              {c.status === 'active' && <span className="ml-1 text-[#4ade80]">•</span>}
+            </button>
+          ))}
         </div>
       )}
 
@@ -428,6 +461,13 @@ export default function KOLTab() {
       )}
       {showCampaignModal && (
         <CampaignModal onSave={handleSaveCampaign} onClose={() => setShowCampaignModal(false)} />
+      )}
+      {showPayConfirm && (
+        <PayConfirmModal
+          kols={kols.filter((k) => k.status !== 'paid' && k.wallet)}
+          onConfirm={executeBatchPay}
+          onClose={() => setShowPayConfirm(false)}
+        />
       )}
     </div>
   );
