@@ -27,6 +27,8 @@ interface DexPair {
 
 interface DexTx {
   txHash?: string;
+  signature?: string;
+  tx?: string;
   maker?: string;
   type?: string;
   amountUsd?: number;
@@ -49,7 +51,7 @@ export default function App() {
         const [tokenRes, dexRes, tradesRes] = await Promise.all([
           fetch(`/api/token/${activeMint}`).catch(() => null),
           fetch(`https://api.dexscreener.com/tokens/v1/solana/${activeMint}`).catch(() => null),
-          fetch(`https://api.dexscreener.com/dex/trades/solana/${activeMint}?limit=20`).catch(() => null),
+          fetch(`/api/trades/${activeMint}`).catch(() => null),
         ]);
 
         let ticker = 'TOKEN';
@@ -87,14 +89,14 @@ export default function App() {
         }
 
         if (tradesRes?.ok) {
-          const tradesData = await tradesRes.json() as { trades?: DexTx[] };
-          const newTxs: Transaction[] = (tradesData?.trades ?? []).slice(0, 15).map((t, i) => ({
-            id: t.txHash ?? String(i),
+          const tradesData = await tradesRes.json() as DexTx[];
+          const newTxs: Transaction[] = (Array.isArray(tradesData) ? tradesData : []).slice(0, 15).map((t, i) => ({
+            id: t.signature ?? t.txHash ?? String(i),
             time: t.timestamp ? new Date(t.timestamp * 1000).toLocaleTimeString('en-US', { hour12: false }) : '--:--:--',
             type: (t.type === 'sell' ? 'sell' : 'buy') as TxType,
             size: Math.round(t.amountUsd ?? 0),
-            wallet: t.maker ? t.maker.slice(0, 6) + '...' + t.maker.slice(-4) : 'unknown',
-            tx: t.txHash ? t.txHash.slice(0, 6) + '...' + t.txHash.slice(-3) : '—',
+            wallet: t.maker ?? 'unknown',
+            tx: t.tx ?? (t.txHash ? t.txHash.slice(0, 6) + '...' + t.txHash.slice(-3) : '—'),
             jitoBundle: false,
             bundleLatencyMs: undefined,
           }));

@@ -27,7 +27,7 @@ const TX_LABELS: Record<TxType, string> = {
 
 export default function MMTab() {
   useWebSocket();
-  const { stats, mirrorRules, transactions, isPaused, wsConnected, toggleRule, setPaused, setMirrorRules } = useMMStore();
+  const { stats, mirrorRules, transactions, isPaused, toggleRule, setPaused, setMirrorRules } = useMMStore();
   const [showKill, setShowKill] = useState(false);
   const [killed, setKilled] = useState(false);
   const [editingRule, setEditingRule] = useState<string | null>(null);
@@ -175,8 +175,8 @@ export default function MMTab() {
         <div className="px-4 py-3 border-b border-[#2a2b2e] flex items-center justify-between">
           <span className="text-sm text-white font-medium">recent actions</span>
           <div className="flex items-center gap-2">
-            <span className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-[#4ade80]' : 'bg-[#6b7280]'}`} />
-            <span className="text-[#6b7280] text-xs">{wsConnected ? 'live' : 'mock'}</span>
+            <span className={`w-1.5 h-1.5 rounded-full ${transactions[0]?.wallet?.includes('...') && !transactions[0]?.wallet?.startsWith('wlt_') ? 'bg-[#4ade80]' : 'bg-[#6b7280]'}`} />
+            <span className="text-[#6b7280] text-xs">{transactions[0]?.wallet?.includes('...') && !transactions[0]?.wallet?.startsWith('wlt_') ? 'live' : 'loading...'}</span>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -203,7 +203,11 @@ export default function MMTab() {
                       ? <span className="text-xs text-[#a78bfa] font-mono">⚡ {tx.bundleLatencyMs}ms</span>
                       : <span className="text-xs text-[#374151]">—</span>}
                   </td>
-                  <td className="px-4 py-2.5 text-[#6b7280] font-mono text-xs">{tx.tx}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs">
+                    {tx.tx && tx.tx !== '—'
+                      ? <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noreferrer" className="text-[#60a5fa] hover:underline">{tx.tx}</a>
+                      : <span className="text-[#4b5563]">—</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
