@@ -97,19 +97,28 @@ export default function KOLTab() {
 
   async function handleSaveKOL(data: Omit<KOL, 'id'>) {
     try {
-      const payload = {
-        handle: data.handle,
-        wallet: data.wallet,
-        rate: data.rate,
-        campaign_id: activeCampaign?.id || null,
-        script_schedule: data.script_schedule,
-        telegram_username: data.telegram_username || null,
-      };
       if (editingKOL) {
+        const payload = {
+          handle: data.handle,
+          wallet: data.wallet,
+          rate: data.rate,
+          campaign_id: editingKOL.campaign_id || activeCampaign?.id || null,
+          script_schedule: data.script_schedule,
+          telegram_username: data.telegram_username || null,
+          status: editingKOL.status,
+        };
         await api.kols.update(editingKOL.id, payload);
         showToast(`${data.handle} updated`);
       } else {
-        await api.kols.create(data);
+        const payload = {
+          handle: data.handle,
+          wallet: data.wallet,
+          rate: data.rate,
+          campaign_id: activeCampaign?.id || null,
+          script_schedule: data.script_schedule || 'am + pm',
+          telegram_username: data.telegram_username || null,
+        };
+        await api.kols.create(payload);
         showToast(`${data.handle} added to roster`);
       }
       setShowKOLModal(false);

@@ -8,7 +8,7 @@ const http = axios.create({ baseURL: BASE, timeout: 10000 });
 export const api = {
   kols: {
     list: () => http.get<KOL[]>('/api/kols').then((r) => r.data),
-    create: (body: Omit<KOL, 'id'>) => http.post<KOL>('/api/kols', body).then((r) => r.data),
+    create: (body: Omit<KOL, 'id' | 'status'>) => http.post<KOL>('/api/kols', body).then((r) => r.data),
     update: (id: string, body: Partial<KOL>) => http.put<KOL>(`/api/kols/${id}`, body).then((r) => r.data),
     remove: (id: string) => http.delete(`/api/kols/${id}`).then((r) => r.data),
   },
