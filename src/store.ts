@@ -8,13 +8,18 @@ interface MMStore {
   transactions: Transaction[];
   isPaused: boolean;
   wsConnected: boolean;
+  activeMint: string;
   setStats: (s: MMStats) => void;
   setMirrorRules: (r: MirrorRule[]) => void;
   toggleRule: (id: string) => void;
   addTransaction: (tx: Transaction) => void;
+  setTransactions: (txs: Transaction[]) => void;
   setPaused: (v: boolean) => void;
   setWsConnected: (v: boolean) => void;
+  setActiveMint: (mint: string) => void;
 }
+
+const DEFAULT_MINT = '27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4';
 
 export const useMMStore = create<MMStore>((set) => ({
   stats: mockMMStats,
@@ -22,6 +27,7 @@ export const useMMStore = create<MMStore>((set) => ({
   transactions: mockTransactions,
   isPaused: false,
   wsConnected: false,
+  activeMint: DEFAULT_MINT,
   setStats: (stats) => set({ stats }),
   setMirrorRules: (mirrorRules) => set({ mirrorRules }),
   toggleRule: (id) =>
@@ -34,6 +40,8 @@ export const useMMStore = create<MMStore>((set) => ({
     set((state) => ({
       transactions: [tx, ...state.transactions].slice(0, 100),
     })),
+  setTransactions: (transactions) => set({ transactions }),
   setPaused: (isPaused) => set({ isPaused }),
   setWsConnected: (wsConnected) => set({ wsConnected }),
+  setActiveMint: (activeMint) => set({ activeMint }),
 }));

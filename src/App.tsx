@@ -14,7 +14,6 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const STORAGE_KEY = 'mm_launch_config';
-const DEFAULT_MINT = '27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4';
 
 interface DexPair {
   baseToken?: { symbol?: string };
@@ -37,92 +36,76 @@ interface DexTx {
 export default function App() {
   const [tab, setTab] = useState<Tab>('mm');
   const setStats = useMMStore((s) => s.setStats);
-  const addTransaction = useMMStore((s) => s.addTransaction);
+  const setTransactions = useMMStore((s) => s.setTransactions);
+  const activeMint = useMMStore((s) => s.activeMint);
   const stats = useMMStore((s) => s.stats);
 
   useEffect(() => {
-    async function boot() {
+    const saved = (() => { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch { return null; } })();
+    const supplyControl = saved?.supplyControl || stats.supplyControl;
+
+    async function fetchAll() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const saved = raw ? JSON.parse(raw) : null;
-        const mint = saved?.token?.mint ?? DEFAULT_MINT;
-
-        if (saved?.token) {
-          setStats({
-            ...stats,
-            activeLaunch: `$${saved.token.ticker}`,
-            mcap: saved.token.mcap !== '—' ? saved.token.mcap : stats.mcap,
-            supplyControl: saved.supplyControl || stats.supplyControl,
-          });
-        }
-
-        const [tokenRes, txRes] = await Promise.all([
-          fetch(`/api/token/${mint}`),
-          fetch(`https://api.dexscreener.com/token-boosts/latest/v1`).catch(() => null),
+        const [tokenRes, dexRes, tradesRes] = await Promise.all([
+          fetch(`/api/token/${activeMint}`).catch(() => null),
+          fetch(`https://api.dexscreener.com/tokens/v1/solana/${activeMint}`).catch(() => null),
+          fetch(`https://api.dexscreener.com/dex/trades/solana/${activeMint}?limit=20`).catch(() => null),
         ]);
 
-        if (tokenRes.ok) {
-          const t = await tokenRes.json() as { ticker: string; mcap: string; price: string; change24h: string };
-          setStats({
-            ...stats,
-            activeLaunch: `$${t.ticker}`,
-            mcap: t.mcap !== '—' ? t.mcap : stats.mcap,
-            supplyControl: saved?.supplyControl || stats.supplyControl,
-          });
+        let ticker = 'TOKEN';
+        let mcap = '—';
+
+        if (tokenRes?.ok) {
+          const t = await tokenRes.json() as { ticker: string; mcap: string };
+          ticker = t.ticker;
+          mcap = t.mcap !== '—' ? t.mcap : mcap;
         }
 
-        const pairsRes = await fetch(`https://api.dexscreener.com/token-profiles/latest/v1`).catch(() => null);
-        const dexRes = await fetch(`https://api.dexscreener.com/tokens/v1/solana/${mint}`).catch(() => null);
         if (dexRes?.ok) {
           const pairs = await dexRes.json() as DexPair[];
           const pair = pairs?.[0];
           if (pair) {
+            ticker = pair.baseToken?.symbol ?? ticker;
             const buys = pair.txns?.h24?.buys ?? 0;
             const sells = pair.txns?.h24?.sells ?? 0;
-            const ratio = sells > 0 ? `${Math.round(buys / sells)}:1` : '—';
             const mcapRaw = pair.marketCap ?? pair.fdv ?? 0;
-            const mcap = mcapRaw >= 1e9 ? `$${(mcapRaw/1e9).toFixed(1)}B` : mcapRaw >= 1e6 ? `$${(mcapRaw/1e6).toFixed(1)}M` : mcapRaw > 0 ? `$${(mcapRaw/1e3).toFixed(0)}K` : '—';
+            mcap = mcapRaw >= 1e9 ? `$${(mcapRaw/1e9).toFixed(1)}B` : mcapRaw >= 1e6 ? `$${(mcapRaw/1e6).toFixed(1)}M` : mcapRaw > 0 ? `$${(mcapRaw/1e3).toFixed(0)}K` : mcap;
             const vol24 = pair.volume?.h24 ?? 0;
             setStats({
               ...stats,
-              activeLaunch: `$${pair.baseToken?.symbol ?? 'JLP'}`,
+              activeLaunch: `$${ticker}`,
               mcap,
               buyers: buys,
               sellers: sells,
-              ratio,
+              ratio: sells > 0 ? `${Math.round(buys / sells)}:1` : '—',
               fees24h: vol24 > 0 ? `$${(vol24 * 0.003 / 1000).toFixed(1)}K` : '—',
-              supplyControl: saved?.supplyControl || stats.supplyControl,
+              supplyControl,
             });
           }
+        } else {
+          setStats({ ...stats, activeLaunch: `$${ticker}`, mcap, supplyControl });
         }
 
-        const recentRes = await fetch(`https://api.dexscreener.com/token-boosts/latest/v1`).catch(() => null);
-        void pairsRes; void txRes; void recentRes;
-
-        const tradesRes = await fetch(`https://api.dexscreener.com/dex/trades/solana/${mint}?limit=20`).catch(() => null);
         if (tradesRes?.ok) {
           const tradesData = await tradesRes.json() as { trades?: DexTx[] };
-          const trades = tradesData?.trades ?? [];
-          trades.slice(0, 12).forEach((t, i) => {
-            const type: TxType = (t.type === 'sell' ? 'sell' : 'buy');
-            const tx: Transaction = {
-              id: t.txHash ?? String(i),
-              time: t.timestamp ? new Date(t.timestamp * 1000).toLocaleTimeString('en-US', { hour12: false }) : '--:--:--',
-              type,
-              size: Math.round(t.amountUsd ?? 0),
-              wallet: t.maker ? t.maker.slice(0, 6) + '...' + t.maker.slice(-4) : 'unknown',
-              tx: t.txHash ? t.txHash.slice(0, 6) + '...' + t.txHash.slice(-3) : '—',
-              jitoBundle: false,
-              bundleLatencyMs: undefined,
-            };
-            addTransaction(tx);
-          });
+          const newTxs: Transaction[] = (tradesData?.trades ?? []).slice(0, 15).map((t, i) => ({
+            id: t.txHash ?? String(i),
+            time: t.timestamp ? new Date(t.timestamp * 1000).toLocaleTimeString('en-US', { hour12: false }) : '--:--:--',
+            type: (t.type === 'sell' ? 'sell' : 'buy') as TxType,
+            size: Math.round(t.amountUsd ?? 0),
+            wallet: t.maker ? t.maker.slice(0, 6) + '...' + t.maker.slice(-4) : 'unknown',
+            tx: t.txHash ? t.txHash.slice(0, 6) + '...' + t.txHash.slice(-3) : '—',
+            jitoBundle: false,
+            bundleLatencyMs: undefined,
+          }));
+          if (newTxs.length > 0) setTransactions(newTxs);
         }
       } catch { /* ignore */ }
     }
-    boot();
+
+    fetchAll();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeMint]);
 
   return (
     <div className="min-h-screen bg-[#0d0e0f] text-[#e5e7eb]">

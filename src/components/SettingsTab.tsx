@@ -24,6 +24,7 @@ function extractMint(input: string): string {
 export default function SettingsTab() {
   const setStats = useMMStore((s) => s.setStats);
   const stats = useMMStore((s) => s.stats);
+  const setActiveMint = useMMStore((s) => s.setActiveMint);
 
   const savedRaw = localStorage.getItem(STORAGE_KEY);
   const saved = savedRaw ? JSON.parse(savedRaw) : null;
@@ -68,6 +69,7 @@ export default function SettingsTab() {
       mcap: token.mcap !== '—' ? token.mcap : stats.mcap,
       supplyControl: supplyControl || stats.supplyControl,
     });
+    setActiveMint(token.mint);
     setApplied(true);
     setTimeout(() => setApplied(false), 2500);
   }
