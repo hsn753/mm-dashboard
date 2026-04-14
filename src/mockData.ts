@@ -14,18 +14,61 @@ export const mockMMStats: MMStats = {
 };
 
 export const mockMirrorRules: MirrorRule[] = [
-  { id: '1', rule: 'buy mirror', threshold: '≥ $1,000', action: 'sell to treasury', status: true },
-  { id: '2', rule: 'sell mirror', threshold: '≥ $10', action: '1:1 buy back', status: true },
-  { id: '3', rule: 'fee redeploy', threshold: '2-3x daily', action: '$8-12k buys', status: true },
+  {
+    id: '1',
+    rule: 'buy mirror',
+    min_threshold: 1000,
+    max_threshold: 0,
+    mirror_multiplier: 0.97,
+    absorb_multiplier: 1.0,
+    delay_ms: 200,
+    action: 'mirror-sell into buy pressure → treasury',
+    status: true,
+  },
+  {
+    id: '2',
+    rule: 'sell absorb',
+    min_threshold: 50,
+    max_threshold: 999,
+    mirror_multiplier: 1.0,
+    absorb_multiplier: 1.05,
+    delay_ms: 30000,
+    action: 'buy back 105% via rotating wallet (30s delay)',
+    status: true,
+  },
+  {
+    id: '3',
+    rule: 'micro sell ignore',
+    min_threshold: 0,
+    max_threshold: 49,
+    mirror_multiplier: 0,
+    absorb_multiplier: 0,
+    delay_ms: 0,
+    action: 'no response — retail trickle absorbed naturally',
+    status: true,
+  },
+  {
+    id: '4',
+    rule: 'fee redeploy',
+    min_threshold: 0,
+    max_threshold: 0,
+    mirror_multiplier: 1.0,
+    absorb_multiplier: 1.0,
+    delay_ms: 1200000,
+    action: 'claim meteora fees → redeploy as buys (20min jitter)',
+    status: true,
+  },
 ];
 
 export const mockTransactions: Transaction[] = [
-  { id: '1', time: '14:32', type: 'mirror_sell', size: 5200, wallet: 'wlt_07', tx: '5Kj...a2' },
-  { id: '2', time: '14:18', type: 'fee_buy', size: 3800, wallet: 'wlt_03', tx: '9Xp...f1' },
-  { id: '3', time: '14:04', type: 'sell_absorb', size: 412, wallet: 'wlt_11', tx: '2Mn...c8' },
-  { id: '4', time: '13:51', type: 'mirror_buy', size: 1200, wallet: 'wlt_02', tx: '7Lp...d3' },
-  { id: '5', time: '13:38', type: 'buy', size: 890, wallet: 'wlt_05', tx: '3Rk...e7' },
-  { id: '6', time: '13:22', type: 'sell', size: 230, wallet: 'wlt_09', tx: '8Qz...b1' },
+  { id: '1', time: '14:32:01', type: 'mirror_sell', size: 7760, wallet: 'wlt_07', tx: '5Kj...a2', jitoBundle: true, bundleLatencyMs: 1340 },
+  { id: '2', time: '14:32:00', type: 'buy', size: 8000, wallet: 'wlt_ext_C', tx: '5Kj...a1', jitoBundle: false, bundleLatencyMs: undefined },
+  { id: '3', time: '14:18:44', type: 'fee_buy', size: 3800, wallet: 'wlt_03', tx: '9Xp...f1', jitoBundle: true, bundleLatencyMs: 980 },
+  { id: '4', time: '14:04:12', type: 'sell_absorb', size: 525, wallet: 'wlt_11', tx: '2Mn...c8', jitoBundle: true, bundleLatencyMs: 1120 },
+  { id: '5', time: '14:04:11', type: 'sell', size: 400, wallet: 'wlt_ext_D', tx: '2Mn...c7', jitoBundle: false, bundleLatencyMs: undefined },
+  { id: '6', time: '13:51:03', type: 'mirror_buy', size: 1560, wallet: 'wlt_02', tx: '7Lp...d3', jitoBundle: true, bundleLatencyMs: 760 },
+  { id: '7', time: '13:51:02', type: 'sell', size: 1500, wallet: 'wlt_ext_B', tx: '7Lp...d2', jitoBundle: false, bundleLatencyMs: undefined },
+  { id: '8', time: '13:38:00', type: 'buy', size: 890, wallet: 'wlt_ext_A', tx: '3Rk...e7', jitoBundle: false, bundleLatencyMs: undefined },
 ];
 
 export const mockHolders: HolderRow[] = [

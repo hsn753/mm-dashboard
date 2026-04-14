@@ -7,12 +7,18 @@ export interface Transaction {
   size: number;
   wallet: string;
   tx: string;
+  bundleLatencyMs?: number;
+  jitoBundle?: boolean;
 }
 
 export interface MirrorRule {
   id: string;
   rule: string;
-  threshold: string;
+  min_threshold: number;
+  max_threshold: number;
+  mirror_multiplier: number;
+  absorb_multiplier: number;
+  delay_ms: number;
   action: string;
   status: boolean;
 }
