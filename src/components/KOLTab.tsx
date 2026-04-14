@@ -271,9 +271,8 @@ export default function KOLTab() {
               >✕</button>
               <button
                 onClick={() => { setAssignModal({ campaignId: c.id, campaignName: c.name }); setAssignSelected([]); }}
-                title="assign KOLs"
-                className="text-[#4b5563] hover:text-[#9ca3af] text-xs leading-none transition-colors"
-              >+</button>
+                className="px-2 py-0.5 rounded text-xs border border-[#2a2b2e] text-[#6b7280] hover:border-[#4b4c4f] hover:text-[#9ca3af] transition-colors"
+              >assign</button>
             </div>
           ))}
         </div>
