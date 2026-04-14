@@ -20,12 +20,6 @@ function extractMint(input: string): string {
   return trimmed;
 }
 
-function formatMcap(usd: number): string {
-  if (usd >= 1_000_000_000) return `$${(usd / 1_000_000_000).toFixed(1)}B`;
-  if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(1)}M`;
-  if (usd >= 1_000) return `$${(usd / 1_000).toFixed(1)}K`;
-  return `$${usd.toFixed(0)}`;
-}
 
 export default function SettingsTab() {
   const setStats = useMMStore((s) => s.setStats);
@@ -50,38 +44,15 @@ export default function SettingsTab() {
     setError(null);
     setToken(null);
     try {
-      const res = await fetch(`https://price.jup.ag/v6/price?ids=${mint}`);
-      const priceData = await res.json() as { data: Record<string, { price: number; id: string }> };
-      const entry = priceData?.data?.[mint];
-
-      const metaRes = await fetch(`https://tokens.jup.ag/token/${mint}`);
-      const meta = await metaRes.json() as { symbol?: string; name?: string; extensions?: { coingeckoId?: string }; daily_volume?: number };
-
-      const ticker = meta?.symbol ?? 'UNKNOWN';
-      const name = meta?.name ?? ticker;
-      const price = entry?.price ?? 0;
-
-      let mcapStr = '—';
-      if (meta?.extensions?.coingeckoId) {
-        try {
-          const cgRes = await fetch(`https://api.coingecko.com/api/v3/coins/${meta.extensions.coingeckoId}?localization=false&tickers=false&community_data=false&developer_data=false`);
-          const cgData = await cgRes.json() as { market_data?: { market_cap?: { usd?: number }; price_change_percentage_24h?: number } };
-          const mcapUsd = cgData?.market_data?.market_cap?.usd;
-          if (mcapUsd) mcapStr = formatMcap(mcapUsd);
-        } catch { /* no mcap */ }
+      const res = await fetch(`/api/token/${mint}`);
+      if (!res.ok) {
+        const err = await res.json() as { error?: string };
+        throw new Error(err.error ?? 'Token not found');
       }
-
-      const tokenData: TokenData = {
-        mint,
-        name,
-        ticker,
-        mcap: mcapStr,
-        price: price > 0 ? `$${price.toPrecision(4)}` : '—',
-        change24h: '—',
-      };
-      setToken(tokenData);
-    } catch {
-      setError('Could not fetch token data. Check the address or URL.');
+      const data = await res.json() as TokenData;
+      setToken(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not fetch token data. Check the address or URL.');
     } finally {
       setLoading(false);
     }
