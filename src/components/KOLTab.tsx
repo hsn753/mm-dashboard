@@ -60,7 +60,12 @@ export default function KOLTab() {
   const [togglingKol, setTogglingKol] = useState<string | null>(null);
 
   const activeCampaign = campaigns.find((c) => c.id === selectedCampaignId) ?? campaigns.find((c) => c.status === 'active') ?? campaigns[0];
-  const totalPaid = payments.filter((p) => p.status === 'confirmed').reduce((s, p) => s + Number(p.amount), 0);
+  const campaignKols = kols.filter((k) => k.campaign_id === activeCampaign?.id);
+  const today = new Date().toDateString();
+  const totalPaidToday = payments
+    .filter((p) => p.status === 'confirmed' && p.campaign_id === activeCampaign?.id && new Date((p.created_at ?? p.timestamp) as string).toDateString() === today)
+    .reduce((s, p) => s + Number(p.amount), 0);
+  const campaignScriptCount = scriptLog.filter((s) => !activeCampaign || s.campaign_name === activeCampaign.name).length;
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -115,12 +120,12 @@ export default function KOLTab() {
           handle: data.handle,
           wallet: data.wallet,
           rate: data.rate,
-          campaign_id: activeCampaign?.id || null,
+          campaign_id: null,
           script_schedule: data.script_schedule || 'am + pm',
           telegram_username: data.telegram_username || null,
         };
         await api.kols.create(payload);
-        showToast(`${data.handle} added to roster`);
+        showToast(`${data.handle} added to roster — use assign to add to a campaign`);
       }
       setShowKOLModal(false);
       setEditingKOL(undefined);
@@ -194,24 +199,35 @@ export default function KOLTab() {
 
   async function handleSaveCampaign(data: Omit<Campaign, 'id' | 'status'>) {
     try {
-      await api.campaigns.create(data);
+      const created = await api.campaigns.create(data) as Campaign;
       showToast(`Campaign "${data.name}" created`);
       setShowCampaignModal(false);
+      setSelectedCampaignId(created.id);
       loadAll();
     } catch {
       showToast('Error creating campaign');
     }
   }
 
+  async function handleResetKOLStatus(kol: KOL) {
+    try {
+      await api.kols.update(kol.id, { ...kol, status: 'pending' });
+      showToast(`${kol.handle} reset to pending`);
+      loadAll();
+    } catch {
+      showToast('Error resetting status');
+    }
+  }
+
   async function handleBatchPay() {
-    const unpaid = kols.filter((k) => k.status !== 'paid' && k.wallet);
-    if (!unpaid.length) { showToast('No unpaid KOLs with wallets'); return; }
+    const unpaid = kols.filter((k) => k.status !== 'paid' && k.wallet && k.campaign_id === activeCampaign?.id);
+    if (!unpaid.length) { showToast('No unpaid KOLs assigned to this campaign'); return; }
     setShowPayConfirm(true);
   }
 
   async function executeBatchPay() {
     setShowPayConfirm(false);
-    const unpaid = kols.filter((k) => k.status !== 'paid' && k.wallet);
+    const unpaid = kols.filter((k) => k.status !== 'paid' && k.wallet && k.campaign_id === activeCampaign?.id);
     setBatchLoading(true);
     try {
       const result = await api.payments.batch(
@@ -288,9 +304,9 @@ export default function KOLTab() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="active campaign" value={loading ? '...' : (activeCampaign?.name ?? '—')} />
-        <StatCard label="kols" value={loading ? '...' : kols.length} />
-        <StatCard label="paid today" value={loading ? '...' : `$${totalPaid.toLocaleString()}`} valueClass="text-[#4ade80]" />
-        <StatCard label="scripts sent" value={loading ? '...' : scriptLog.length} />
+        <StatCard label="kols" value={loading ? '...' : `${campaignKols.length} / ${kols.length}`} />
+        <StatCard label="paid today" value={loading ? '...' : `$${totalPaidToday.toLocaleString()}`} valueClass="text-[#4ade80]" />
+        <StatCard label="scripts sent" value={loading ? '...' : campaignScriptCount} />
       </div>
 
       {/* Sub Nav */}
@@ -344,6 +360,9 @@ export default function KOLTab() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button onClick={() => { setEditingKOL(kol); setShowKOLModal(true); }} className="text-xs text-[#6b7280] hover:text-[#9ca3af] mr-3">edit</button>
+                          {kol.status === 'paid' && (
+                            <button onClick={() => handleResetKOLStatus(kol)} className="text-xs text-[#6b7280] hover:text-[#9ca3af] mr-3" title="reset to pending for next campaign">reset</button>
+                          )}
                           {activeCampaign && (
                             <button
                               onClick={() => handleToggleAssign(kol)}
@@ -522,10 +541,10 @@ export default function KOLTab() {
         </button>
         <button
           onClick={handleBatchPay}
-          disabled={batchLoading || kols.filter((k) => k.status !== 'paid').length === 0}
+          disabled={batchLoading || campaignKols.filter((k) => k.status !== 'paid').length === 0}
           className="px-4 py-2 rounded-lg bg-[#4ade80] hover:bg-[#22c55e] text-black text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {batchLoading ? 'sending...' : `batch pay all${kols.filter((k) => k.status !== 'paid').length > 0 ? ` (${kols.filter((k) => k.status !== 'paid').length})` : ''}`}
+          {batchLoading ? 'sending...' : `pay campaign${campaignKols.filter((k) => k.status !== 'paid').length > 0 ? ` (${campaignKols.filter((k) => k.status !== 'paid').length})` : ''}`}
         </button>
         <button
           onClick={loadAll}

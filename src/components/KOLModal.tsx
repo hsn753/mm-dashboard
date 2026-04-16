@@ -36,7 +36,6 @@ export default function KOLModal({ kol, onSave, onClose }: Props) {
             { label: 'handle', field: 'handle', type: 'text', placeholder: '@handle' },
             { label: 'wallet', field: 'wallet', type: 'text', placeholder: 'Solana wallet address' },
             { label: 'rate (USDC)', field: 'rate', type: 'number', placeholder: '0' },
-            { label: 'campaign', field: 'campaign', type: 'text', placeholder: 'campaign name' },
             { label: 'telegram username', field: 'telegram_username', type: 'text', placeholder: 'username (no @)' },
           ].map(({ label, field, type, placeholder }) => (
             <div key={field}>
